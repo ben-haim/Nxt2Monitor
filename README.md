@@ -46,13 +46,13 @@ The following configuration options can be specified in Nxt2Monitor.conf.  This 
     Specifies an NRS server connection.  This parameter can be specified multiple times to connect to more than one NRS server.  The default administrator password will be used if 'adminPW' is omitted.  The default API port will be used if 'port' is omitted.  The local host will be used if no 'connect' parameters are specified.
 	
   - apiPort=port		
-	Specifies the default NRS API port.  Port 7876 will be used if this parameter is not specified.
+	Specifies the default NRS API port.  Port 27876 will be used if this parameter is not specified.
     
   - adminPW=password        
     Specifies the default administrator password for the NRS server.
     
   - useSSL=boolean          
-    Specify 'true' to use HTTPS or 'false' to use HTTP to connect to the NRS node.  The default is 'true'.
+    Specify 'true' to use HTTPS or 'false' to use HTTP to connect to the NRS node.  The default is 'true'.  HTTP will always be used when connecting to 'localhost'.
     
   - allowNameMismatch=boolean       
     Specify 'true' to allow an HTTPS connection or 'false' to reject an HTTPS connection if the host name does not match the SSL certificate name.  The default is 'false'.
