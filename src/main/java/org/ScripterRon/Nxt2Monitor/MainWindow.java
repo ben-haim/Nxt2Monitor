@@ -282,7 +282,7 @@ public final class MainWindow extends JFrame implements ActionListener {
                 String line = String.format("Chain %s bundler %s: rate %s, overpay %s, limit %s",
                                             bundler.getString("chain"), bundler.getString("bundlerRS"),
                                             Utils.nqtToString(bundler.getLong("minRateNQTPerFXT")),
-                                            Utils.nqtToString(bundler.getLong("overpayFQTPerFxt")),
+                                            Utils.nqtToString(bundler.getLong("overpayFQTPerFXT")),
                                             Utils.nqtToString(bundler.getLong("totalFeesLimitFQT")));
                 if (count > 0)
                     sb.append("\n");
