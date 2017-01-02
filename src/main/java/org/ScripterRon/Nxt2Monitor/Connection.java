@@ -125,7 +125,7 @@ public class Connection {
 
     /**
      * Return the administrator password
-F    *
+     *
      * @return                      Administrator password
      */
     public String getAdminPW() {
