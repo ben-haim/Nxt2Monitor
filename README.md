@@ -16,7 +16,6 @@ I use the Netbeans IDE but any build environment with Maven and the Java compile
 Here are the steps for a manual build.  You will need to install Maven 3 and Java SE Development Kit 8 if you don't already have them.
 
   - Create the executable: mvn clean package    
-  - [Optional] Create the documentation: mvn javadoc:javadoc    
   - [Optional] Copy target/Nxt2Monitor-v.r.m.jar and lib/* to wherever you want to store the executables.    
   - Create a shortcut to start Nxt2Monitor using java.exe for a command window or javaw.exe for GUI only.    
 
@@ -46,7 +45,7 @@ The following configuration options can be specified in Nxt2Monitor.conf.  This 
     Specifies an NRS server connection.  This parameter can be specified multiple times to connect to more than one NRS server.  The default administrator password will be used if 'adminPW' is omitted.  The default API port will be used if 'port' is omitted.  The local host will be used if no 'connect' parameters are specified.
 	
   - apiPort=port		
-	Specifies the default NRS API port.  Port 27876 will be used if this parameter is not specified.
+	Specifies the default NRS API port.  Port 27876 will be used if this parameter is not specified.  Use 26876 for testnet.    
     
   - adminPW=password        
     Specifies the default administrator password for the NRS server.
