@@ -162,6 +162,9 @@ public class StatusPanel extends JPanel implements ActionListener, Runnable {
     /** Nxt epoch (milliseconds since January 1, 1970) */
     private long epochBeginning;
 
+    /** Event registration token */
+    private long eventToken;
+
     /**
      * Create the status panel
      */
@@ -323,7 +326,7 @@ public class StatusPanel extends JPanel implements ActionListener, Runnable {
         //
         try {
             List<String> eventList = new ArrayList<>();
-            Request.eventRegister(eventList, false, true);
+            Request.eventRegister(eventList, eventToken, false, true);
         } catch (IOException exc) {
             Main.log.error("Unable to cancel event listener", exc);
             Main.logException("Unable to cancel event listener", exc);
@@ -404,7 +407,8 @@ public class StatusPanel extends JPanel implements ActionListener, Runnable {
             eventList.add("Peer.UNBLACKLIST");
             eventList.add("Block.BLOCK_PUSHED");
             eventList.add("Block.BLOCK_POPPED");
-            Request.eventRegister(eventList, false, false);
+            Response eventResponse = Request.eventRegister(eventList, 0, false, false);
+            eventToken = eventResponse.getLong("token");
         } catch (InterruptedException | InvocationTargetException exc) {
             Main.logException("Unable to perform status update", exc);
             Main.log.error("Unable to perform status update", exc);
@@ -428,7 +432,7 @@ public class StatusPanel extends JPanel implements ActionListener, Runnable {
                 //
                 // Wait for an event
                 //
-                List<Event> eventList = Request.eventWait(60);
+                List<Event> eventList = Request.eventWait(eventToken, 60);
                 if (shutdown)
                     break;
                 //

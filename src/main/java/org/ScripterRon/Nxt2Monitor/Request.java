@@ -100,18 +100,24 @@ public class Request {
      * will be canceled if all of the registered events are removed.
      *
      * @param       events                  List of events to register
+     * @param       token                   Event registration token or 0
      * @param       addEvents               TRUE to add events to an existing event list
      * @param       removeEvents            TRUE to remove events from an existing event list
-     * @return                              TRUE if the events were registered
+     * @return                              Event register response
      * @throws      IOException             Unable to issue Nxt API request
      */
-    public static boolean eventRegister(List<String> events, boolean addEvents, boolean removeEvents)
-                                            throws IOException {
+    public static Response eventRegister(List<String> events, long token,
+                    boolean addEvents, boolean removeEvents) throws IOException {
         StringBuilder sb = new StringBuilder(1000);
         for (String event : events) {
             if (sb.length() > 0)
                 sb.append("&");
             sb.append("event=").append(URLEncoder.encode(event, "UTF-8"));
+        }
+        if (token != 0) {
+            if (sb.length() > 0)
+                sb.append("&");
+            sb.append("token=").append(Long.toString(token));
         }
         if (addEvents) {
             if (sb.length() > 0)
@@ -123,23 +129,21 @@ public class Request {
                 sb.append("&");
             sb.append("remove=true");
         }
-        Response response = issueRequest("eventRegister",
-                                         (sb.length()>0 ? sb.toString() : null),
-                                         DEFAULT_READ_TIMEOUT);
-        return response.getBoolean("registered");
+        return issueRequest("eventRegister", (sb.length()>0 ? sb.toString() : null), DEFAULT_READ_TIMEOUT);
     }
 
     /**
      * Wait for an event
      *
+     * @param       token                   Event registration token
      * @param       timeout                 Wait timeout (seconds)
      * @return                              Event list
      * @throws      IOException             Unable to issue Nxt API request
      */
-    public static List<Event> eventWait(int timeout) throws IOException {
+    public static List<Event> eventWait(long token, int timeout) throws IOException {
         List<Event> events = new ArrayList<>();
         Response response = issueRequest("eventWait",
-                                         String.format("timeout=%d", timeout),
+                                         String.format("token=%d&timeout=%d", token, timeout),
                                          (timeout+5)*1000);
         List<Map<String, Object>> eventList = response.getObjectList("events");
         eventList.forEach(resp -> events.add(new Event(new Response(resp))));
@@ -234,7 +238,7 @@ public class Request {
                                     count, URLEncoder.encode(Main.adminPW, "UTF-8")),
                             DEFAULT_READ_TIMEOUT);
     }
-    
+
     /**
      * Get a peer
      *
