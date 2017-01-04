@@ -279,11 +279,12 @@ public final class MainWindow extends JFrame implements ActionListener {
                     break;
                 }
                 Response bundler = new Response(map);
-                String line = String.format("Chain %s bundler %s: rate %s, overpay %s, limit %s",
-                                            bundler.getString("chain"), bundler.getString("bundlerRS"),
-                                            Utils.nqtToString(bundler.getLong("minRateNQTPerFXT")),
-                                            Utils.nqtToString(bundler.getLong("overpayFQTPerFXT")),
-                                            Utils.nqtToString(bundler.getLong("totalFeesLimitFQT")));
+                Chain chain = StatusPanel.chains.get(bundler.getInt("chain"));
+                String line = String.format("%s bundler %s: Rate %s, Overpay %s, Limit %s",
+                                    chain.getName(), bundler.getString("bundlerRS"),
+                                    Utils.nqtToString(bundler.getLong("minRateNQTPerFXT"), chain.getDecimals()),
+                                    Utils.nqtToString(bundler.getLong("overpayFQTPerFXT"), 8),
+                                    Utils.nqtToString(bundler.getLong("totalFeesLimitFQT"), 8));
                 if (count > 0)
                     sb.append("\n");
                 sb.append(line);

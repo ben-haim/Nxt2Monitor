@@ -341,12 +341,13 @@ public class Main {
             //
             string.append("<html><b>");
             string.append(text);
-            string.append("</b><br><br>");
+            string.append("</b><br>");
             //
             // Display the exception object
             //
+            string.append("<b>");
             string.append(exc.toString());
-            string.append("<br>");
+            string.append("</b><br><br>");
             //
             // Display the stack trace
             //

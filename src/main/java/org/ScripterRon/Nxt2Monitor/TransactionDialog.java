@@ -16,6 +16,8 @@
 package org.ScripterRon.Nxt2Monitor;
 
 import java.io.IOException;
+import java.math.BigDecimal;
+import java.math.MathContext;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -126,10 +128,10 @@ public class TransactionDialog extends JDialog implements ActionListener {
                 Response tx = new Response(txMap);
                 if (tx.getInt("type") == -1) {
                     Response attachment = new Response(tx.getObject("attachment"));
-                    String chain = StatusPanel.chains.get(attachment.getInt("chain"));
+                    Chain chain = StatusPanel.chains.get(attachment.getInt("chain"));
                     List<String> hashList = attachment.getStringList("childTransactionFullHashes");
                     for (String hash : hashList) {
-                        transactions.add(Request.getTransaction(hash, chain));
+                        transactions.add(Request.getTransaction(hash, chain.getName()));
                     }
                 } else {
                     transactions.add(tx);
@@ -261,12 +263,13 @@ public class TransactionDialog extends JDialog implements ActionListener {
                 throw new IndexOutOfBoundsException("Table row "+row+" is not valid");
             Object value;
             Response tx = transactions.get(row);
+            Chain chain = StatusPanel.chains.get(tx.getInt("chain"));
             //
             // Get the value for the requested cell
             //
             switch (column) {
                 case 0:                                 // Transaction ID
-                    value = tx.getString("transaction");
+                    value = Long.toUnsignedString(Utils.fullHashToId(tx.getHexString("fullHash")));
                     break;
                 case 1:                                 // Type
                     Map<Integer, String> txType = StatusPanel.transactionTypes.get(tx.getInt("type"));
@@ -285,15 +288,15 @@ public class TransactionDialog extends JDialog implements ActionListener {
                     value = tx.getString("recipientRS");
                     break;
                 case 4:                                 // Amount
-                    value = Long.parseUnsignedLong(tx.getString("amountNQT"));
+                    value = new BigDecimal(tx.getLong("amountNQT"), MathContext.DECIMAL128)
+                            .movePointLeft(chain.getDecimals());
                     break;
                 case 5:                                 // Fee
-                    value = Long.parseUnsignedLong(tx.getString("feeNQT"));
+                    value = new BigDecimal(tx.getLong("feeNQT"), MathContext.DECIMAL128)
+                            .movePointLeft(chain.getDecimals());
                     break;
                 case 6:                                 // Chain
-                    value = StatusPanel.chains.get(tx.getInt("chain"));
-                    if (value == null)
-                        value = "Unknown";
+                    value = StatusPanel.chains.get(tx.getInt("chain")).getName();
                     break;
                 default:
                     throw new IndexOutOfBoundsException("Table column "+column+" is not valid");

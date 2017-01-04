@@ -22,6 +22,15 @@ import javax.swing.JLabel;
 import javax.swing.JTable;
 import javax.swing.table.DefaultTableCellRenderer;
 
+import java.math.BigDecimal;
+
+import java.awt.Color;
+import java.awt.Component;
+
+import javax.swing.JLabel;
+import javax.swing.JTable;
+import javax.swing.table.DefaultTableCellRenderer;
+
 /**
  * AmountRenderer is a cell renderer for use with a JTable column. It formats
  * NXT amounts with a minimum of 4 decimal digits.  Negative values will be
@@ -59,7 +68,11 @@ public final class AmountRenderer extends DefaultTableCellRenderer {
         //
         // Convert the amount to a formatted string
         //
-        String text = Utils.nqtToString(((Number)value).longValue());
+        String text;
+        if (value instanceof BigDecimal)
+            text = Utils.nqtToString((BigDecimal)value);
+        else
+            text = Utils.nqtToString(((Number)value).longValue(), 8);
         //
         // Set the foreground color to red if the value is negative
         //

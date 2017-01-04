@@ -88,7 +88,7 @@ public class StatusPanel extends JPanel implements ActionListener, Runnable {
     public static final Map<Integer, Map<Integer, String>> transactionTypes = new HashMap<>();
 
     /** Chains */
-    public static final Map<Integer, String> chains = new HashMap<>();
+    public static final Map<Integer, Chain> chains = new HashMap<>();
 
     /** Block status table column names */
     private static final String[] blockColumnNames = {
@@ -360,9 +360,12 @@ public class StatusPanel extends JPanel implements ActionListener, Runnable {
             //
             // Get the chains
             //
-            Set<Map.Entry<String, Object>> chainSet = constants.getObject("chains").entrySet();
-            chainSet.forEach(entry -> {
-                chains.put(((Long)entry.getValue()).intValue(), entry.getKey());
+            constants.getObject("chainProperties").values().forEach(entry -> {
+                Response chainProperties = new Response((Map<String, Object>)entry);
+                Chain chain = new Chain(chainProperties.getString("name"),
+                                        chainProperties.getInt("id"),
+                                        chainProperties.getInt("decimals"));
+                chains.put(chain.getId(), chain);
             });
             //
             // Get the transaction types
