@@ -15,6 +15,8 @@
  */
 package org.ScripterRon.Nxt2Monitor;
 
+import org.ScripterRon.Nxt2API.Nxt;
+
 import java.io.IOException;
 import java.util.List;
 
@@ -54,7 +56,7 @@ public class LogDialog extends JDialog implements ActionListener {
         // Load the log messages
         //
         try {
-            List<String> messages = Request.getLog(1000).getStringList("messages");
+            List<String> messages = Nxt.getLog(1000, Main.adminPW);
             messages.forEach((logmsg) -> {
                 String msg = logmsg.trim();
                 StringBuilder sb = new StringBuilder(msg.length());

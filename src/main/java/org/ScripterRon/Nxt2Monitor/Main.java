@@ -15,6 +15,9 @@
  */
 package org.ScripterRon.Nxt2Monitor;
 
+import org.ScripterRon.Nxt2API.Nxt;
+import org.ScripterRon.Nxt2API.NxtException;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -92,12 +95,6 @@ public class Main {
 
     /** Use HTTPS connections */
     public static boolean useSSL = true;
-
-    /** Allow host name mismatch for HTTPS connection */
-    public static boolean allowNameMismatch = false;
-
-    /** Accept any server certificate */
-    public static boolean acceptAnyCertificate = false;
 
     /** Application lock file */
     private static RandomAccessFile lockFile;
@@ -207,6 +204,10 @@ public class Main {
             }
             serverConnection = connections.get(0);
             //
+            // Initialize the Nxt API library
+            //
+            Nxt.init(serverConnection.getHost(), serverConnection.getPort(), useSSL);
+            //
             // Start the GUI
             //
             UIManager.setLookAndFeel(UIManager.getSystemLookAndFeelClassName());
@@ -314,12 +315,6 @@ public class Main {
                     case "usessl":
                         useSSL = Boolean.valueOf(value);
                         break;
-                    case "allownamemismatch":
-                        allowNameMismatch = Boolean.valueOf(value);
-                        break;
-                    case "acceptanycertificate":
-                        acceptAnyCertificate = Boolean.valueOf(value);
-                        break;
                     default:
                         throw new IllegalArgumentException(String.format("Invalid configuration option: %s", line));
                 }
@@ -346,18 +341,23 @@ public class Main {
             // Display the exception object
             //
             string.append("<b>");
-            string.append(exc.toString());
+            if (exc instanceof NxtException)
+                string.append(exc.getMessage());
+            else
+                string.append(exc.toString());
             string.append("</b><br><br>");
             //
             // Display the stack trace
             //
-            StackTraceElement[] trace = exc.getStackTrace();
-            int count = 0;
-            for (StackTraceElement elem : trace) {
-                string.append(elem.toString());
-                string.append("<br>");
-                if (++count == 25)
-                    break;
+            if (!(exc instanceof NxtException)) {
+                StackTraceElement[] trace = exc.getStackTrace();
+                int count = 0;
+                for (StackTraceElement elem : trace) {
+                    string.append(elem.toString());
+                    string.append("<br>");
+                    if (++count == 25)
+                        break;
+                }
             }
             string.append("</html>");
             JOptionPane.showMessageDialog(mainWindow, string, "Error", JOptionPane.ERROR_MESSAGE);
@@ -374,52 +374,5 @@ public class Main {
                 log.error("Unable to log exception during program initialization");
             }
         }
-    }
-
-    /**
-     * Dumps a byte array to the log
-     *
-     * @param       text        Text message
-     * @param       data        Byte array
-     */
-    public static void dumpData(String text, byte[] data) {
-        dumpData(text, data, 0, data.length);
-    }
-
-    /**
-     * Dumps a byte array to the log
-     *
-     * @param       text        Text message
-     * @param       data        Byte array
-     * @param       length      Length to dump
-     */
-    public static void dumpData(String text, byte[] data, int length) {
-        dumpData(text, data, 0, length);
-    }
-
-    /**
-     * Dump a byte array to the log
-     *
-     * @param       text        Text message
-     * @param       data        Byte array
-     * @param       offset      Offset into array
-     * @param       length      Data length
-     */
-    public static void dumpData(String text, byte[] data, int offset, int length) {
-        StringBuilder outString = new StringBuilder(512);
-        outString.append(text);
-        outString.append("\n");
-        for (int i=0; i<length; i++) {
-            if (i%32 == 0)
-                outString.append(String.format(" %14X  ", i));
-            else if (i%4 == 0)
-                outString.append(" ");
-            outString.append(String.format("%02X", data[offset+i]));
-            if (i%32 == 31)
-                outString.append("\n");
-        }
-        if (length%32 != 0)
-            outString.append("\n");
-        log.debug(outString.toString());
     }
 }

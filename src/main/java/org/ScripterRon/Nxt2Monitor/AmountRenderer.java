@@ -15,18 +15,12 @@
  */
 package org.ScripterRon.Nxt2Monitor;
 
-import java.awt.Color;
-import java.awt.Component;
-
-import javax.swing.JLabel;
-import javax.swing.JTable;
-import javax.swing.table.DefaultTableCellRenderer;
+import org.ScripterRon.Nxt2API.Utils;
 
 import java.math.BigDecimal;
 
 import java.awt.Color;
 import java.awt.Component;
-
 import javax.swing.JLabel;
 import javax.swing.JTable;
 import javax.swing.table.DefaultTableCellRenderer;

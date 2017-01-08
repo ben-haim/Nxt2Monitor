@@ -15,6 +15,13 @@
  */
 package org.ScripterRon.Nxt2Monitor;
 
+import org.ScripterRon.Nxt2API.Chain;
+import org.ScripterRon.Nxt2API.Event;
+import org.ScripterRon.Nxt2API.IdentifierException;
+import org.ScripterRon.Nxt2API.Nxt;
+import org.ScripterRon.Nxt2API.Response;
+import org.ScripterRon.Nxt2API.Utils;
+
 import java.io.IOException;
 import java.lang.reflect.InvocationTargetException;
 import java.util.ArrayList;
@@ -23,7 +30,6 @@ import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
 import java.awt.BorderLayout;
@@ -35,7 +41,6 @@ import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
-
 import javax.swing.Box;
 import javax.swing.BorderFactory;
 import javax.swing.BoxLayout;
@@ -83,12 +88,6 @@ public class StatusPanel extends JPanel implements ActionListener, Runnable {
             return (state != null ? state : State.NOT_CONNECTED);
         }
     }
-
-    /** Transaction types */
-    public static final Map<Integer, Map<Integer, String>> transactionTypes = new HashMap<>();
-
-    /** Chains */
-    public static final Map<Integer, Chain> chains = new HashMap<>();
 
     /** Block status table column names */
     private static final String[] blockColumnNames = {
@@ -158,9 +157,6 @@ public class StatusPanel extends JPanel implements ActionListener, Runnable {
 
     /** Status update identifier */
     private long statusId;
-
-    /** Nxt epoch (milliseconds since January 1, 1970) */
-    private long epochBeginning;
 
     /** Event registration token */
     private long eventToken;
@@ -255,7 +251,7 @@ public class StatusPanel extends JPanel implements ActionListener, Runnable {
                     if (row >= 0) {
                         row = connectionTable.convertRowIndexToModel(row);
                         String address = (String)connectionTableModel.getValueAt(row, 0);
-                        Request.blacklistPeer(address);
+                        Nxt.blacklistPeer(address, Main.adminPW);
                     }
                     break;
                 case "copy address":
@@ -326,7 +322,7 @@ public class StatusPanel extends JPanel implements ActionListener, Runnable {
         //
         try {
             List<String> eventList = new ArrayList<>();
-            Request.eventRegister(eventList, eventToken, false, true);
+            Nxt.eventRegister(eventList, eventToken, false, true);
         } catch (IOException exc) {
             Main.log.error("Unable to cancel event listener", exc);
             Main.logException("Unable to cancel event listener", exc);
@@ -353,44 +349,13 @@ public class StatusPanel extends JPanel implements ActionListener, Runnable {
         //
         try {
             //
-            // Get the Nxt constants
-            //
-            Response constants = Request.getConstants();
-            epochBeginning = constants.getLong("epochBeginning");
-            //
-            // Get the chains
-            //
-            constants.getObject("chainProperties").values().forEach(entry -> {
-                Response chainProperties = new Response((Map<String, Object>)entry);
-                Chain chain = new Chain(chainProperties.getString("name"),
-                                        chainProperties.getInt("id"),
-                                        chainProperties.getInt("decimals"));
-                chains.put(chain.getId(), chain);
-            });
-            //
-            // Get the transaction types
-            //
-            Set<Map.Entry<String, Object>> typeSet = constants.getObject("transactionTypes").entrySet();
-            typeSet.forEach(entry -> {
-                int type = Integer.valueOf(entry.getKey());
-                Map<String, Object> subtypes = (Map<String, Object>)((Map<String, Object>)entry.getValue()).get("subtypes");
-                Set<Map.Entry<String, Object>> subtypeSet = subtypes.entrySet();
-                Map<Integer, String> transactionSubtypes = new HashMap<>();
-                subtypeSet.forEach(subentry -> {
-                    int subtype = Integer.valueOf(subentry.getKey());
-                    String name = (String)((Map<String, Object>)subentry.getValue()).get("name");
-                    transactionSubtypes.put(subtype, name);
-                });
-                transactionTypes.put(type, transactionSubtypes);
-            });
-            //
             // Add the last 25 blocks to the block table
             //
-            List<Response> blockList = Request.getBlocks(0, 24, false);
+            List<Response> blockList = Nxt.getBlocks(0, 24, false);
             //
             // Add connected peers to the connection table
             //
-            List<Response> peerList = Request.getPeers(State.CONNECTED.name());
+            List<Response> peerList = Nxt.getPeers(State.CONNECTED.name());
             //
             // Update the status panel
             //
@@ -410,7 +375,7 @@ public class StatusPanel extends JPanel implements ActionListener, Runnable {
             eventList.add("Peer.UNBLACKLIST");
             eventList.add("Block.BLOCK_PUSHED");
             eventList.add("Block.BLOCK_POPPED");
-            Response eventResponse = Request.eventRegister(eventList, 0, false, false);
+            Response eventResponse = Nxt.eventRegister(eventList, 0, false, false);
             eventToken = eventResponse.getLong("token");
         } catch (InterruptedException | InvocationTargetException exc) {
             Main.logException("Unable to perform status update", exc);
@@ -435,7 +400,7 @@ public class StatusPanel extends JPanel implements ActionListener, Runnable {
                 //
                 // Wait for an event
                 //
-                List<Event> eventList = Request.eventWait(eventToken, 60);
+                List<Event> eventList = Nxt.eventWait(eventToken, 60);
                 if (shutdown)
                     break;
                 //
@@ -453,7 +418,7 @@ public class StatusPanel extends JPanel implements ActionListener, Runnable {
                     String eventId = event.getIds().get(0);
                     switch (event.getName()) {
                         case "Peer.ADD_ACTIVE_PEER":
-                            statusPeer = Request.getPeer(eventId);
+                            statusPeer = Nxt.getPeer(eventId);
                             if (State.fromCode(statusPeer.getInt("state")) == State.CONNECTED) {
                                 SwingUtilities.invokeAndWait(() ->
                                         connectionTableModel.peerAdded(statusPeer, pendingConnections));
@@ -461,7 +426,7 @@ public class StatusPanel extends JPanel implements ActionListener, Runnable {
                             break;
                         case "Peer.CHANGE_ACTIVE_PEER":
                         case "Peer.CHANGE_ANNOUNCED_ADDRESS":
-                            peer = Request.getPeer(eventId);
+                            peer = Nxt.getPeer(eventId);
                             statusPeer = connectionTableModel.getPeer(eventId);
                             if (statusPeer != null) {
                                 SwingUtilities.invokeAndWait(() -> connectionTableModel.peerUpdated(
@@ -493,7 +458,7 @@ public class StatusPanel extends JPanel implements ActionListener, Runnable {
                             break;
                         case "Block.BLOCK_PUSHED":
                             try {
-                                statusBlock = Request.getBlock(eventId, false);
+                                statusBlock = Nxt.getBlock(eventId, false);
                                 SwingUtilities.invokeAndWait(() -> blockTableModel.blockAdded(statusBlock));
                             } catch (IOException exc) {
                                 Main.log.error("Unable to get block", exc);
@@ -639,7 +604,7 @@ public class StatusPanel extends JPanel implements ActionListener, Runnable {
             //
             switch (column) {
                 case 0:                             // Date
-                    value = new Date(block.getLong("timestamp") * 1000 + epochBeginning);
+                    value = new Date(block.getLong("timestamp") * 1000 + Nxt.getEpoch());
                     break;
                 case 1:                             // Height
                     value = block.getInt("height");
@@ -668,22 +633,32 @@ public class StatusPanel extends JPanel implements ActionListener, Runnable {
          * @param   blocks          Block list
          */
         public void blocksAdded(List<Response> blocks) {
-            blocks.forEach(block -> {
-                blockList.add(block);
-                blockMap.put(block.getId("block"), block);
-            });
+            for (Response block : blocks) {
+                try {
+                    long id = block.getId("block");
+                    blockList.add(block);
+                    blockMap.put(id, block);
+                } catch (IdentifierException exc) {
+                    // Ignore the block
+                }
+            }
             fireTableDataChanged();
         }
 
         /**
         * A new block has been added to the block chain
         *
-        * @param    block           New block
+        * @param    block                   New block
         */
         public void blockAdded(Response block) {
-            blockList.add(0, block);
-            blockMap.put(block.getId("block"), block);
-            fireTableRowsInserted(0, 0);
+            try {
+                long id = block.getId("block");
+                blockList.add(0, block);
+                blockMap.put(block.getId("block"), block);
+                fireTableRowsInserted(0, 0);
+            } catch (IdentifierException exc) {
+                // Ignore the block
+            }
         }
 
         /**

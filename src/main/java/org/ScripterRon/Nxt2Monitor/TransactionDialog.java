@@ -15,12 +15,17 @@
  */
 package org.ScripterRon.Nxt2Monitor;
 
+import org.ScripterRon.Nxt2API.Chain;
+import org.ScripterRon.Nxt2API.Nxt;
+import org.ScripterRon.Nxt2API.Response;
+import org.ScripterRon.Nxt2API.TransactionType;
+import org.ScripterRon.Nxt2API.Utils;
+
 import java.io.IOException;
 import java.math.BigDecimal;
 import java.math.MathContext;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
 
 import java.awt.BorderLayout;
 import java.awt.Color;
@@ -28,7 +33,6 @@ import java.awt.Dialog;
 import java.awt.Dimension;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
-
 import javax.swing.BorderFactory;
 import javax.swing.Box;
 import javax.swing.BoxLayout;
@@ -121,17 +125,16 @@ public class TransactionDialog extends JDialog implements ActionListener {
             //
             // Get the block transactions
             //
-            Response block = Request.getBlock(blockId, true);
-            List<Map<String, Object>> blockTransactions = block.getObjectList("transactions");
+            Response block = Nxt.getBlock(blockId, true);
+            List<Response> blockTransactions = block.getObjectList("transactions");
             List<Response> transactions = new ArrayList<>();
-            for (Map<String, Object> txMap : blockTransactions) {
-                Response tx = new Response(txMap);
+            for (Response tx : blockTransactions) {
                 if (tx.getInt("type") == -1) {
-                    Response attachment = new Response(tx.getObject("attachment"));
-                    Chain chain = StatusPanel.chains.get(attachment.getInt("chain"));
+                    Response attachment = tx.getObject("attachment");
+                    Chain chain = Nxt.getChain(attachment.getInt("chain"));
                     List<String> hashList = attachment.getStringList("childTransactionFullHashes");
                     for (String hash : hashList) {
-                        transactions.add(Request.getTransaction(hash, chain.getName()));
+                        transactions.add(Nxt.getTransaction(Utils.parseHexString(hash), chain));
                     }
                 } else {
                     transactions.add(tx);
@@ -263,7 +266,7 @@ public class TransactionDialog extends JDialog implements ActionListener {
                 throw new IndexOutOfBoundsException("Table row "+row+" is not valid");
             Object value;
             Response tx = transactions.get(row);
-            Chain chain = StatusPanel.chains.get(tx.getInt("chain"));
+            Chain chain = Nxt.getChain(tx.getInt("chain"));
             //
             // Get the value for the requested cell
             //
@@ -272,13 +275,11 @@ public class TransactionDialog extends JDialog implements ActionListener {
                     value = Long.toUnsignedString(Utils.fullHashToId(tx.getHexString("fullHash")));
                     break;
                 case 1:                                 // Type
-                    Map<Integer, String> txType = StatusPanel.transactionTypes.get(tx.getInt("type"));
-                    if (txType == null) {
-                        value = "Unknown";
+                    TransactionType txType = Nxt.getTransactionType(tx.getInt("type"), tx.getInt("subtype"));
+                    if (txType != null) {
+                        value = txType.getName();
                     } else {
-                        value = txType.get(tx.getInt("subtype"));
-                        if (value == null)
-                            value = "Unknown";
+                        value = "Unknown";
                     }
                     break;
                 case 2:                                 // Sender
@@ -296,7 +297,7 @@ public class TransactionDialog extends JDialog implements ActionListener {
                             .movePointLeft(chain.getDecimals());
                     break;
                 case 6:                                 // Chain
-                    value = StatusPanel.chains.get(tx.getInt("chain")).getName();
+                    value = Nxt.getChain(tx.getInt("chain")).getName();
                     break;
                 default:
                     throw new IndexOutOfBoundsException("Table column "+column+" is not valid");

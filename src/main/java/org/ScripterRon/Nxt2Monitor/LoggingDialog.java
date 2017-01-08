@@ -15,6 +15,8 @@
  */
 package org.ScripterRon.Nxt2Monitor;
 
+import org.ScripterRon.Nxt2API.Nxt;
+
 import java.io.IOException;
 
 import java.awt.Dialog;
@@ -126,7 +128,7 @@ public class LoggingDialog extends JDialog implements ActionListener {
     private void setLogging() {
         String level = (String)levelField.getSelectedItem();
         try {
-            Request.setLogging(level);
+            Nxt.setLogging(level, Main.adminPW);
         } catch (IOException exc) {
             Main.log.error("Unable to set server logging", exc);
             Main.logException("Unable to set server logging", exc);

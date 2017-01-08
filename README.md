@@ -52,10 +52,4 @@ The following configuration options can be specified in Nxt2Monitor.conf.  This 
     
   - useSSL=boolean          
     Specify 'true' to use HTTPS or 'false' to use HTTP to connect to the NRS node.  The default is 'true'.  HTTP will always be used when connecting to 'localhost'.
-    
-  - allowNameMismatch=boolean       
-    Specify 'true' to allow an HTTPS connection or 'false' to reject an HTTPS connection if the host name does not match the SSL certificate name.  The default is 'false'.
-    
-  - acceptAnyCertificate=boolean       
-    Specify 'true' to accept the server certificate without verifying the trust path or 'false' to verify the certificate trust path before accepting the connection.  The default is 'false'.
 

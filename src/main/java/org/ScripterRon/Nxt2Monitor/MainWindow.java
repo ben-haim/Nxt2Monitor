@@ -15,9 +15,13 @@
  */
 package org.ScripterRon.Nxt2Monitor;
 
+import org.ScripterRon.Nxt2API.Chain;
+import org.ScripterRon.Nxt2API.Nxt;
+import org.ScripterRon.Nxt2API.Response;
+import org.ScripterRon.Nxt2API.Utils;
+
 import java.io.IOException;
 import java.util.List;
-import java.util.Map;
 
 import java.awt.Color;
 import java.awt.Dimension;
@@ -29,6 +33,7 @@ import java.awt.event.WindowEvent;
 import javax.swing.JFrame;
 import javax.swing.JMenuBar;
 import javax.swing.JOptionPane;
+import javax.swing.SwingUtilities;
 import javax.swing.WindowConstants;
 
 /**
@@ -193,11 +198,20 @@ public final class MainWindow extends JFrame implements ActionListener {
         Connection connection = ConnectDialog.showDialog(Main.mainWindow);
         if (connection != null) {
             statusPanel.shutdown();
-            Main.serverConnection = connection;
-            statusPanel = new StatusPanel();
-            setContentPane(statusPanel);
-            revalidate();
-            statusPanel.startEventHandler();
+            SwingUtilities.invokeLater(() -> {
+                Main.serverConnection = connection;
+                try {
+                    Nxt.init(Main.serverConnection.getHost(), Main.serverConnection.getPort(), Main.useSSL);
+                } catch (IOException exc) {
+                    Main.log.error("Unable to switch to new server", exc);
+                    Main.logException("Unable to switch to new server", exc);
+                    exitProgram();
+                }
+                statusPanel = new StatusPanel();
+                setContentPane(statusPanel);
+                revalidate();
+                statusPanel.startEventHandler();
+            });
         }
     }
 
@@ -209,7 +223,7 @@ public final class MainWindow extends JFrame implements ActionListener {
                                                      "Announced Address", JOptionPane.QUESTION_MESSAGE);
         if (address != null && address.length() > 0) {
             try {
-                Request.addPeer(address);
+                Nxt.addPeer(address, Main.adminPW);
             } catch (IOException exc) {
                 Main.log.error("Unable to connect peer", exc);
                 Main.logException("Unable to connect peer", exc);
@@ -225,7 +239,7 @@ public final class MainWindow extends JFrame implements ActionListener {
                                                      "Announced Address", JOptionPane.QUESTION_MESSAGE);
         if (address != null && address.length() > 0) {
             try {
-                Request.blacklistPeer(address);
+                Nxt.blacklistPeer(address, Main.adminPW);
             } catch (IOException exc) {
                 Main.log.error("Unable to blacklist peer", exc);
                 Main.logException("Unable to blacklist peer", exc);
@@ -238,15 +252,14 @@ public final class MainWindow extends JFrame implements ActionListener {
      */
     private void viewForging() {
         try {
-            List<Map<String, Object>> generators = Request.getForging().getObjectList("generators");
+            List<Response> generators = Nxt.getForging(Main.adminPW);
             StringBuilder sb = new StringBuilder(1000);
             int count = 0;
-            for (Map<String, Object> map : generators) {
+            for (Response generator : generators) {
                 if (count == 10) {
                     sb.append("\n    ...More");
                     break;
                 }
-                Response generator = new Response(map);
                 String line = String.format("Generator %s: Time to hit %,d seconds",
                                             generator.getString("accountRS"), generator.getLong("remaining"));
                 if (count > 0)
@@ -270,21 +283,20 @@ public final class MainWindow extends JFrame implements ActionListener {
      */
     private void viewBundlers() {
         try {
-            List<Map<String, Object>> bundlers = Request.getBundlers().getObjectList("bundlers");
+            List<Response> bundlers = Nxt.getBundlers(Main.adminPW);
             StringBuilder sb = new StringBuilder(1000);
             int count = 0;
-            for (Map<String, Object> map : bundlers) {
+            for (Response bundler : bundlers) {
                 if (count == 10) {
                     sb.append("\n    ...More");
                     break;
                 }
-                Response bundler = new Response(map);
-                Chain chain = StatusPanel.chains.get(bundler.getInt("chain"));
+                Chain chain = Nxt.getChain(bundler.getInt("chain"));
                 String line = String.format("%s bundler %s: Rate %s, Overpay %s, Limit %s",
-                                    chain.getName(), bundler.getString("bundlerRS"),
-                                    Utils.nqtToString(bundler.getLong("minRateNQTPerFXT"), chain.getDecimals()),
-                                    Utils.nqtToString(bundler.getLong("overpayFQTPerFXT"), 8),
-                                    Utils.nqtToString(bundler.getLong("totalFeesLimitFQT"), 8));
+                        chain.getName(), bundler.getString("bundlerRS"),
+                        Utils.nqtToString(bundler.getLong("minRateNQTPerFXT"), chain.getDecimals()),
+                        Utils.nqtToString(bundler.getLong("overpayFQTPerFXT"), 8),
+                        Utils.nqtToString(bundler.getLong("totalFeesLimitFQT"), 8));
                 if (count > 0)
                     sb.append("\n");
                 sb.append(line);
@@ -303,10 +315,8 @@ public final class MainWindow extends JFrame implements ActionListener {
 
     /**
      * Exit the application
-     *
-     * @exception       IOException     Unable to save application data
      */
-    private void exitProgram() throws IOException {
+    private void exitProgram() {
         //
         // Stop status updates
         //
