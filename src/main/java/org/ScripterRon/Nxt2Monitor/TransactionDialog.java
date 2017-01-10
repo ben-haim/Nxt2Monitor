@@ -16,8 +16,10 @@
 package org.ScripterRon.Nxt2Monitor;
 
 import org.ScripterRon.Nxt2API.Chain;
+import org.ScripterRon.Nxt2API.IdentifierException;
 import org.ScripterRon.Nxt2API.Nxt;
 import org.ScripterRon.Nxt2API.Response;
+import org.ScripterRon.Nxt2API.Transaction;
 import org.ScripterRon.Nxt2API.TransactionType;
 import org.ScripterRon.Nxt2API.Utils;
 
@@ -33,12 +35,16 @@ import java.awt.Dialog;
 import java.awt.Dimension;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
+import java.awt.event.MouseAdapter;
+import java.awt.event.MouseEvent;
 import javax.swing.BorderFactory;
 import javax.swing.Box;
 import javax.swing.BoxLayout;
 import javax.swing.JDialog;
 import javax.swing.JFrame;
+import javax.swing.JOptionPane;
 import javax.swing.JPanel;
+import javax.swing.JPopupMenu;
 import javax.swing.JScrollPane;
 import javax.swing.JTable;
 import javax.swing.table.AbstractTableModel;
@@ -70,6 +76,9 @@ public class TransactionDialog extends JDialog implements ActionListener {
     /** Transaction table */
     private final JTable table;
 
+    /** Transaction table popup menu */
+    private final JPopupMenu tablePopup;
+
     /**
      * Create the dialog
      *
@@ -79,14 +88,17 @@ public class TransactionDialog extends JDialog implements ActionListener {
     public TransactionDialog(JFrame parent, List<Response> transactions) {
         super(parent, "Block Transactions", Dialog.ModalityType.DOCUMENT_MODAL);
         setDefaultCloseOperation(WindowConstants.DISPOSE_ON_CLOSE);
+        TableMouseListener mouseListener = new TableMouseListener();
         //
         // Create the transaction table
         //
+        tablePopup = new PopupMenu(this, new String[] {"View Transaction", "view transaction"});
         tableModel = new TransactionTableModel(columnNames, columnClasses, transactions);
         table = new SizedTable(tableModel, columnTypes);
         table.setRowSorter(new TableRowSorter<>(tableModel));
         table.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
         table.setPreferredScrollableViewportSize(new Dimension(900, 400));
+        table.addMouseListener(mouseListener);
         JScrollPane scrollPane = new JScrollPane(table);
         //
         // Create the table pane
@@ -164,7 +176,8 @@ public class TransactionDialog extends JDialog implements ActionListener {
     @Override
     public void actionPerformed(ActionEvent ae) {
         //
-        // "done"   - Done displaying block transactions
+        // "done"               - Done displaying block transactions
+        // "view transaction"   - Show transaction details
         //
         try {
             String action = ae.getActionCommand();
@@ -173,10 +186,47 @@ public class TransactionDialog extends JDialog implements ActionListener {
                     setVisible(false);
                     dispose();
                     break;
+                case "view transaction":
+                    int row = table.getSelectedRow();
+                    if (row >= 0) {
+                        row = table.convertRowIndexToModel(row);
+                        Transaction tx = tableModel.getTransaction(row);
+                        JOptionPane.showMessageDialog(this, tx.toString(), "Transaction Details",
+                                JOptionPane.INFORMATION_MESSAGE);
+                    }
+                    break;
             }
         } catch (Exception exc) {
             Main.log.error("Exception while processing action event", exc);
             Main.logException("Exception while processing action event", exc);
+        }
+    }
+
+    /**
+     * Mouse listener for the transaction table
+     */
+    private class TableMouseListener extends MouseAdapter {
+
+        /**
+         * Mouse button released
+         *
+         * We will select the table row at the mouse pointer for a popup trigger event
+         * if the row is not already selected.  We will then display the popup menu.
+         * This allows the action listener to determine the row for the popup event.
+         *
+         * @param   event           Mouse event
+         */
+        @Override
+        public void mouseReleased(MouseEvent event) {
+            if (event.isPopupTrigger()) {
+                JTable popupTable = (JTable)event.getSource();
+                if (popupTable == table) {
+                    int row = table.rowAtPoint(event.getPoint());
+                    if (row >= 0 && !table.isRowSelected(row))
+                        table.changeSelection(row, 0, false, false);
+                        tablePopup.show(event.getComponent(), event.getX(), event.getY());
+                }
+            }
         }
     }
 
@@ -192,7 +242,7 @@ public class TransactionDialog extends JDialog implements ActionListener {
         private final Class<?>[] columnClasses;
 
         /** Block transactions */
-        private final List<Response> transactions;
+        private List<Transaction> transactions;
 
         /**
          * Create the transaction table model
@@ -208,7 +258,13 @@ public class TransactionDialog extends JDialog implements ActionListener {
                 throw new IllegalArgumentException("Number of names not same as number of classes");
             this.columnNames = columnNames;
             this.columnClasses = columnClasses;
-            this.transactions = blockTransactions;
+            try {
+                this.transactions = Transaction.processTransactions(blockTransactions);
+            } catch (Exception exc) {
+                Main.log.error("Unable to process block transactions", exc);
+                Main.logException("Unable to process block transactions", exc);
+                this.transactions = new ArrayList<>(0);
+            }
         }
 
         /**
@@ -265,44 +321,52 @@ public class TransactionDialog extends JDialog implements ActionListener {
             if (row >= transactions.size())
                 throw new IndexOutOfBoundsException("Table row "+row+" is not valid");
             Object value;
-            Response tx = transactions.get(row);
-            Chain chain = Nxt.getChain(tx.getInt("chain"));
+            Transaction tx = transactions.get(row);
+            Chain chain = tx.getChain();
             //
             // Get the value for the requested cell
             //
             switch (column) {
                 case 0:                                 // Transaction ID
-                    value = Long.toUnsignedString(Utils.fullHashToId(tx.getHexString("fullHash")));
+                    value = Utils.idToString(tx.getId());
                     break;
                 case 1:                                 // Type
-                    TransactionType txType = Nxt.getTransactionType(tx.getInt("type"), tx.getInt("subtype"));
-                    if (txType != null) {
-                        value = txType.getName();
-                    } else {
-                        value = "Unknown";
-                    }
+                    value = tx.getTransactionType().getName();
                     break;
                 case 2:                                 // Sender
-                    value = tx.getString("senderRS");
+                    value = Utils.getAccountRsId(tx.getSenderId());
                     break;
                 case 3:                                 // Recipient
-                    value = tx.getString("recipientRS");
+                    if (tx.getRecipientId() != 0)
+                        value = Utils.getAccountRsId(tx.getRecipientId());
+                    else
+                        value = "";
                     break;
                 case 4:                                 // Amount
-                    value = new BigDecimal(tx.getLong("amountNQT"), MathContext.DECIMAL128)
-                            .movePointLeft(chain.getDecimals());
+                    value = new BigDecimal(tx.getAmount(), MathContext.DECIMAL128)
+                                .movePointLeft(chain.getDecimals());
                     break;
                 case 5:                                 // Fee
-                    value = new BigDecimal(tx.getLong("feeNQT"), MathContext.DECIMAL128)
-                            .movePointLeft(chain.getDecimals());
+                    value = new BigDecimal(tx.getFee(), MathContext.DECIMAL128)
+                                .movePointLeft(chain.getDecimals());
                     break;
                 case 6:                                 // Chain
-                    value = Nxt.getChain(tx.getInt("chain")).getName();
+                    value = chain.getName();
                     break;
                 default:
                     throw new IndexOutOfBoundsException("Table column "+column+" is not valid");
             }
             return value;
+        }
+
+        /**
+         * Get the transaction for the specified row
+         *
+         * @param   row                 Table row
+         * @return                      Transaction
+         */
+        public Transaction getTransaction(int row) {
+            return transactions.get(row);
         }
     }
 }

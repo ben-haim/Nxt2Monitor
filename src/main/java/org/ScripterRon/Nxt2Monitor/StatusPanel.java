@@ -15,7 +15,6 @@
  */
 package org.ScripterRon.Nxt2Monitor;
 
-import org.ScripterRon.Nxt2API.Chain;
 import org.ScripterRon.Nxt2API.Event;
 import org.ScripterRon.Nxt2API.IdentifierException;
 import org.ScripterRon.Nxt2API.Nxt;
