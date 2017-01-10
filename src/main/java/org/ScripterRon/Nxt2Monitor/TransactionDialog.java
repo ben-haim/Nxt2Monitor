@@ -16,11 +16,9 @@
 package org.ScripterRon.Nxt2Monitor;
 
 import org.ScripterRon.Nxt2API.Chain;
-import org.ScripterRon.Nxt2API.IdentifierException;
 import org.ScripterRon.Nxt2API.Nxt;
 import org.ScripterRon.Nxt2API.Response;
 import org.ScripterRon.Nxt2API.Transaction;
-import org.ScripterRon.Nxt2API.TransactionType;
 import org.ScripterRon.Nxt2API.Utils;
 
 import java.io.IOException;
@@ -33,6 +31,9 @@ import java.awt.BorderLayout;
 import java.awt.Color;
 import java.awt.Dialog;
 import java.awt.Dimension;
+import java.awt.Toolkit;
+import java.awt.datatransfer.Clipboard;
+import java.awt.datatransfer.StringSelection;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.awt.event.MouseAdapter;
@@ -92,7 +93,8 @@ public class TransactionDialog extends JDialog implements ActionListener {
         //
         // Create the transaction table
         //
-        tablePopup = new PopupMenu(this, new String[] {"View Transaction", "view transaction"});
+        tablePopup = new PopupMenu(this, new String[] {"Copy Transaction Hash", "copy hash"},
+                                         new String[] {"View Transaction", "view transaction"});
         tableModel = new TransactionTableModel(columnNames, columnClasses, transactions);
         table = new SizedTable(tableModel, columnTypes);
         table.setRowSorter(new TableRowSorter<>(tableModel));
@@ -176,21 +178,36 @@ public class TransactionDialog extends JDialog implements ActionListener {
     @Override
     public void actionPerformed(ActionEvent ae) {
         //
+        // "copy hash"          - Copy transaction hash to clipboard
         // "done"               - Done displaying block transactions
         // "view transaction"   - Show transaction details
         //
         try {
+            int row;
+            Transaction tx;
+            StringSelection sel;
+            Clipboard cb;
             String action = ae.getActionCommand();
             switch (action) {
                 case "done":
                     setVisible(false);
                     dispose();
                     break;
-                case "view transaction":
-                    int row = table.getSelectedRow();
+                case "copy hash":
+                    row = table.getSelectedRow();
                     if (row >= 0) {
                         row = table.convertRowIndexToModel(row);
-                        Transaction tx = tableModel.getTransaction(row);
+                        tx = tableModel.getTransaction(row);
+                        sel = new StringSelection(Utils.toHexString(tx.getFullHash()));
+                        cb = Toolkit.getDefaultToolkit().getSystemClipboard();
+                        cb.setContents(sel, null);
+                        break;
+                    }
+                case "view transaction":
+                    row = table.getSelectedRow();
+                    if (row >= 0) {
+                        row = table.convertRowIndexToModel(row);
+                        tx = tableModel.getTransaction(row);
                         JOptionPane.showMessageDialog(this, tx.toString(), "Transaction Details",
                                 JOptionPane.INFORMATION_MESSAGE);
                     }
@@ -224,7 +241,7 @@ public class TransactionDialog extends JDialog implements ActionListener {
                     int row = table.rowAtPoint(event.getPoint());
                     if (row >= 0 && !table.isRowSelected(row))
                         table.changeSelection(row, 0, false, false);
-                        tablePopup.show(event.getComponent(), event.getX(), event.getY());
+                    tablePopup.show(event.getComponent(), event.getX(), event.getY());
                 }
             }
         }
