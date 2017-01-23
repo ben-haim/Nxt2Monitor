@@ -302,11 +302,12 @@ public class StatusPanel extends JPanel implements ActionListener, Runnable {
      */
     private void updateStatus() {
         Response block = blockTableModel.getChainHead();
+        int height = (block != null ? block.getInt("height") : 0);
         nodeField.setText(String.format("<html><b>NRS node: [%s]:%d</b></html>",
                                         Main.serverConnection.getHost(),
                                         Main.serverConnection.getPort()));
         chainHeightField.setText(String.format("<html><b>Chain height: %d</b></html>",
-                                        block.getInt("height")));
+                                        height));
         connectionsField.setText(String.format("<html><b>Peer connections: %d</b></html>",
                                         connectionTableModel.getActiveCount()));
     }
@@ -679,10 +680,10 @@ public class StatusPanel extends JPanel implements ActionListener, Runnable {
         /**
          * Return the block chain head
          *
-         * @return                  Block chain head
+         * @return                  Block chain head or null if the chain is empty
          */
         public Response getChainHead() {
-            return blockList.get(0);
+            return (!blockList.isEmpty() ? blockList.get(0) : null);
         }
 
         /**
