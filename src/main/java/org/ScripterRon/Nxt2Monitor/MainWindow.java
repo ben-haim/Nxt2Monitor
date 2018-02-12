@@ -303,7 +303,7 @@ public final class MainWindow extends JFrame implements ActionListener {
                 count++;
             }
             if (count == 0)
-                JOptionPane.showMessageDialog(this, "Server is not bundline",
+                JOptionPane.showMessageDialog(this, "Server is not bundling",
                                               "Bundlers", JOptionPane.INFORMATION_MESSAGE);
             else
                 JOptionPane.showMessageDialog(this, sb.toString(), "Bundlers", JOptionPane.INFORMATION_MESSAGE);
